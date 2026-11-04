@@ -1,6 +1,7 @@
 // Clann — sample town data. One fictional town, Ballinroe, Co. Galway.
 // Everything here is make-believe and only exists to test the prototype.
 
+window.CLANN_SAMPLE_TODAY = '2026-11-04';
 window.CLANN_SEED = function () {
   const ym = '2026-11';
   return {

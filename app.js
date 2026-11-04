@@ -22,7 +22,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const uid = p => (p || 'x') + Math.random().toString(36).slice(2, 8);
 const pad = n => String(n).padStart(2, '0');
 function isoOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-let TODAY = isoOf(new Date()); const REAL_TODAY = TODAY;
+// the demo lives in the sample town's own week, so it looks right whenever someone opens it
+const REAL_TODAY = (window.CLANN_SAMPLE_TODAY || isoOf(new Date())); let TODAY = REAL_TODAY;
 try { const t = localStorage.getItem(KEY + ':today'); if (t) TODAY = t; } catch (e) {}
 function dateOf(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); }
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
