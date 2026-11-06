@@ -124,5 +124,6 @@ window.CLANN_SEED = function () {
         spends: [ { id: 's3', desc: 'Heated cabinet', amount: 620, date: '2026-07-14', receipt: 'Order 88213, HeartSafe', by: 'sean' }, { id: 's4', desc: 'Two sets of pads', amount: 180, date: '2026-07-14', receipt: 'Order 88213, HeartSafe', by: 'sean' } ] },
     ],
     log: [],
+    outreach: [],
   };
 };

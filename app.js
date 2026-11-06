@@ -6,7 +6,7 @@
 const KEY = 'clann-proto-v1';
 let S;
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.version === 2) return s; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.version === 2) { if (!s.outreach) s.outreach = []; return s; } } } catch (e) {}
   return window.CLANN_SEED();
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -310,7 +310,8 @@ function desk() {
   const meeting = nm ? section('Meeting', posterCard(nm) + meetingTools(nm)) : '';
   const open = S.fundraisers.filter(f => f.status === 'open');
   const fund = section('Fund', (open.length ? open.map(f => fundCard(f, true)).join('') : empty('No fund open.')), '<button class="linkish" data-act="new-fund">Start one</button>');
-  return blk(html) + blk(votes) + blk(meeting) + blk(fund);
+  const help = section('Supports and craic', '<div class="card pad-0"><div class="list"><button class="item tap" data-act="orgs" data-kind="support"><div class="col grow"><div class="t">Ask for support</div><div class="s">' + orgs().filter(o => o.kind === 'support').length + ' charities, services and public bodies</div></div>' + chev + '</button><button class="item tap" data-act="orgs" data-kind="craic"><div class="col grow"><div class="t">Book the craic</div><div class="s">' + orgs().filter(o => o.kind === 'craic').length + ' musicians, makers, tellers and shows</div></div>' + chev + '</button><button class="item tap" data-act="outreach-list"><div class="col grow"><div class="t">Who we have asked</div><div class="s">' + (S.outreach.length ? S.outreach.length + ' so far · ' + S.outreach.filter(o => o.status === 'sent').length + ' waiting' : 'Nobody yet') + '</div></div>' + chev + '</button></div></div>');
+  return blk(html) + blk(votes) + blk(meeting) + blk(fund) + blk(help);
 }
 function dashboard() {
   const q = deskQueue(), nm = nextMeeting(), lm = lastMeeting(), d = draftIssue();
@@ -345,7 +346,7 @@ function dashboard() {
     (declined.length ? '<div class="small muted" style="margin-top:10px">' + declined.length + ' declined, in the queue above.</div>' : '') + '</div></div>';
   c3 += '<div class="panel"><div class="ph"><h2>Fund</h2><button class="linkish" data-act="new-fund">Start one</button></div><div style="padding:12px 12px 12px">' + (open.length ? open.map(f => fundCard(f, true)).join('') : '<div class="empty">No fund open.</div>') + '</div></div>';
   const pending = S.joinRequests.filter(j => j.status === 'pending').length;
-  c3 += '<div class="panel"><div class="ph"><h2>The town</h2><span class="eyebrow">' + S.users.filter(u => u.role !== 'pending').length + ' on the page</span></div><div class="list"><button class="item tap" data-act="people"><div class="grow">Everyone, with their records</div>' + chev + '</button><button class="item tap" data-act="desk-go" data-to="join"><div class="grow">Waiting to join</div><span class="pill ' + (pending ? 'rust' : '') + '">' + pending + '</span></button><button class="item tap" data-act="colours"><div class="grow">Our colours and marks</div>' + chev + '</button><button class="item tap" data-act="rules"><div class="grow">How the newsletter is approved</div>' + chev + '</button></div></div>';
+  c3 += '<div class="panel"><div class="ph"><h2>The town</h2><span class="eyebrow">' + S.users.filter(u => u.role !== 'pending').length + ' on the page</span></div><div class="list"><button class="item tap" data-act="people"><div class="grow">Everyone, with their records</div>' + chev + '</button><button class="item tap" data-act="desk-go" data-to="join"><div class="grow">Waiting to join</div><span class="pill ' + (pending ? 'rust' : '') + '">' + pending + '</span></button><button class="item tap" data-act="orgs"><div class="grow">Supports and craic</div><span class="pill">' + orgs().length + '</span></button><button class="item tap" data-act="outreach-list"><div class="grow">Who we have asked</div><span class="pill ' + (S.outreach.filter(o => o.status === 'sent').length ? 'rust' : '') + '">' + S.outreach.length + '</span></button><button class="item tap" data-act="orgs"><div class="grow">Supports and craic · ask for help, book a night</div><span class="pill">' + orgs().length + '</span></button><button class="item tap" data-act="outreach-list"><div class="grow">Who we have asked</div><span class="pill ' + (S.outreach.filter(o => o.status === 'sent').length ? 'rust' : '') + '">' + S.outreach.length + '</span></button><button class="item tap" data-act="colours"><div class="grow">Our colours and marks</div>' + chev + '</button><button class="item tap" data-act="rules"><div class="grow">How the newsletter is approved</div>' + chev + '</button></div></div>';
   const rota = c3.slice(0, c3.indexOf('<div class="panel"><div class="ph"><h2>Fund</h2>'));
   const rest = c3.slice(c3.indexOf('<div class="panel"><div class="ph"><h2>Fund</h2>'));
   return html + '<div class="dash"><div class="col">' + c1 + '</div><div class="col">' + c2 + '</div><div class="col">' + rest + '</div></div>' + rota;
@@ -1036,6 +1037,65 @@ function themeForm() {
 }
 function tooLight(hex) { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.45; }
 
+
+// ---------- SUPPORTS AND CRAIC: who the committee can call on ----------
+function orgs() { return window.ORGS || []; }
+const COST = { free: 'Free', grant: 'They fund', low: 'Under €200', mid: '€200 to €1,000', high: 'Over €1,000', ask: 'Ask' };
+const COST_CLS = { free: 'moss', grant: 'gorse', low: '', mid: '', high: 'bog', ask: 'sky' };
+function orgState() { if (!R.orgs) R.orgs = { kind: 'support', q: '', cat: '', cost: '', near: false }; return R.orgs; }
+function townCounty() { return (S.town.county || '').replace(/^Co\.\s*/, ''); }
+function orgMatches(o, st) {
+  if (o.kind !== st.kind) return false;
+  if (st.cat && o.category !== st.cat) return false;
+  if (st.cost && o.cost !== st.cost) return false;
+  if (st.near && !(o.reach === 'national' || o.based === townCounty() || (o.counties || []).includes(townCounty()))) return false;
+  if (st.q) { const q = st.q.toLowerCase(); const hay = [o.name, o.category, o.offers, o.good_for, o.how, o.based, (o.tags || []).join(' '), (o.counties || []).join(' ')].join(' ').toLowerCase(); if (!q.split(/\s+/).every(w => hay.includes(w))) return false; }
+  return true;
+}
+function orgsSheet() {
+  const st = orgState(); const all = orgs().filter(o => o.kind === st.kind);
+  const cats = [...new Set(all.map(o => o.category))].sort();
+  const list = orgs().filter(o => orgMatches(o, st)).sort((a, b) => a.name.localeCompare(b.name));
+  let html = '<h2>' + (st.kind === 'support' ? 'Ask for support' : 'Book the craic') + '</h2><div class="small muted">' + (st.kind === 'support' ? 'Charities, services and public bodies a place can call on. Nothing here costs the town unless it says so.' : 'People and groups who bring a night: music, tellers, shows, classes, walks. Prices are a guide; ask them.') + '</div>';
+  html += '<div class="seg"><button class="' + (st.kind === 'support' ? 'on' : '') + '" data-act="orgs-kind" data-kind="support">Supports <span class="n">' + orgs().filter(o => o.kind === 'support').length + '</span></button><button class="' + (st.kind === 'craic' ? 'on' : '') + '" data-act="orgs-kind" data-kind="craic">Craic <span class="n">' + orgs().filter(o => o.kind === 'craic').length + '</span></button></div>';
+  html += '<input class="well" id="f-orgq" placeholder="' + (st.kind === 'support' ? 'Try: loneliness, grant, first aid, water…' : 'Try: music, kids, storyteller, film, walk…') + '" value="' + esc(st.q) + '" data-live="orgs">';
+  html += '<div class="field"><label for="f-cat">Kind of thing</label><select id="f-cat" data-change="orgs-cat"><option value="">Everything</option>' + cats.map(c => '<option value="' + esc(c) + '"' + (st.cat === c ? ' selected' : '') + '>' + esc(c) + ' (' + all.filter(o => o.category === c).length + ')</option>').join('') + '</select></div>';
+  html += '<div class="chips">' + Object.keys(COST).map(k => '<button class="chip ' + (st.cost === k ? 'on' : '') + '" data-act="orgs-cost" data-cost="' + k + '">' + COST[k] + '</button>').join('') + '<button class="chip ' + (st.near ? 'on' : '') + '" data-act="orgs-near">Covers ' + esc(townCounty()) + '</button></div>';
+  html += '<div class="row between"><span class="eyebrow">' + list.length + ' of ' + all.length + '</span>' + (st.q || st.cat || st.cost || st.near ? '<button class="linkish" data-act="orgs-clear">Clear</button>' : '') + '</div>';
+  html += '<div class="card pad-0"><div class="list">' + (list.length ? list.slice(0, 60).map(o => '<button class="item tap" data-act="org" data-id="' + o.id + '"><div class="col grow"><div class="t">' + esc(o.name) + '</div><div class="s">' + esc(o.category) + ' · ' + (o.reach === 'national' ? 'all Ireland' : esc(o.based)) + '</div><div class="small muted" style="font-family:var(--serif);margin-top:3px">' + esc(o.offers.length > 110 ? o.offers.slice(0, 108).replace(/\s+\S*$/, '') + '…' : o.offers) + '</div></div><div class="right"><span class="pill ' + (COST_CLS[o.cost] || '') + '">' + COST[o.cost] + '</span></div></button>').join('') + (list.length > 60 ? '<div class="item small muted">Showing 60. Narrow it down.</div>' : '') : '<div class="item small muted">Nothing matches. Try fewer words.</div>') + '</div></div>';
+  html += '<div class="small faint">' + orgs().length + ' organisations, all real, checked by machine on ' + esc((window.ORGS_CHECKED || '')) + 'the day the list was built. Confirm details with them before relying on this.</div>';
+  sheet(html); $('.sheet').classList.add('wide');
+  if (R.orgsFocus) { const el = $('#f-orgq'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } R.orgsFocus = false; }
+}
+function orgSheet(id) {
+  const o = orgs().find(x => x.id === id); if (!o) return; const st = orgState();
+  const prior = S.outreach.filter(x => x.orgId === o.id).sort((a, b) => a.at < b.at ? 1 : -1);
+  let html = '<div class="row wrap"><span class="pill ' + (o.kind === 'support' ? 'bog' : 'moss') + '">' + (o.kind === 'support' ? 'Support' : 'Craic') + '</span><span class="pill">' + esc(o.category) + '</span><span class="pill ' + (COST_CLS[o.cost] || '') + '">' + COST[o.cost] + '</span></div><h2>' + esc(o.name) + '</h2><p>' + esc(o.offers) + '</p>';
+  html += '<div class="kv">' + (o.good_for ? '<b>Good for</b><span>' + esc(o.good_for) + '</span>' : '') + '<b>How</b><span>' + esc(o.how) + '</span><b>Cost</b><span>' + COST[o.cost] + (o.cost_note ? ' · ' + esc(o.cost_note) : '') + '</span><b>Where</b><span>' + (o.reach === 'national' ? 'All of Ireland' : 'Based in ' + esc(o.based) + ((o.counties || []).length ? ' · ' + esc(o.counties.join(', ')) : '')) + '</span>' +
+    (o.kind === 'craic' ? '<b>Crowd</b><span>' + { small: 'Small, under 40', medium: 'Medium, 40 to 200', any: 'Any size' }[o.crowd] + ' · ' + { indoor: 'indoors', outdoor: 'outdoors', either: 'indoors or out' }[o.setting] + '</span>' : '') +
+    '<b>Lead time</b><span>' + { days: 'Days', weeks: 'A few weeks', months: 'Months. Plan ahead.' }[o.lead_time] + '</span>' + (o.irish ? '<b>Irish</b><span>Works through Irish</span>' : '') + (o.phone ? '<b>Phone</b><span class="tel">' + esc(o.phone) + '</span>' : '') + '</div>';
+  if (o.note) html += '<div class="note gorse">' + esc(o.note) + '</div>';
+  html += '<div class="btnrow"><a class="btn secondary" href="' + esc(o.website) + '" target="_blank" rel="noopener">Their website ↗</a><button class="btn moss" data-act="outreach-form" data-id="' + o.id + '">' + (o.kind === 'support' ? 'Ask for support' : 'Ask about a booking') + '</button></div>';
+  if (prior.length) html += '<div class="card"><div class="t small">We have asked them before</div><div class="list" style="margin-top:6px">' + prior.map(x => '<div class="item" style="padding:8px 0"><div class="col grow"><div class="t small">' + esc(x.what) + '</div><div class="s tiny">' + esc(first(x.by)) + ' · ' + fmt(x.at) + (x.when ? ' · for ' + fmt(x.when) : '') + '</div></div><span class="pill ' + outreachCls(x.status) + '">' + outreachLabel(x.status) + '</span></div>').join('') + '</div></div>';
+  html += '<div class="small faint">' + (o.web === 'ok' ? 'Website answered when checked.' : o.web === 'blocked' ? 'Website exists but refuses robots; open it yourself.' : 'Website did not answer when checked; confirm the address.') + ' Nobody has confirmed these details with them yet.</div>';
+  html += '<div class="btnrow"><button class="btn secondary" data-act="orgs">Back to the list</button></div>';
+  sheet(html);
+}
+function outreachLabel(st) { return { sent: 'Asked', replied: 'They replied', booked: 'Booked', done: 'Done', no: 'No' }[st] || st; }
+function outreachCls(st) { return { sent: 'gorse', replied: '', booked: 'moss', done: 'moss', no: 'rust' }[st] || ''; }
+function outreachForm(id) {
+  const o = orgs().find(x => x.id === id);
+  sheet('<div class="eyebrow">' + esc(o.name) + '</div><h2>' + (o.kind === 'support' ? 'Ask for support' : 'Ask about a booking') + '</h2><div class="form">' + field('f-what', o.kind === 'support' ? 'What we need' : 'What we have in mind', 'text', '', { placeholder: o.kind === 'support' ? 'A talk at the meeting, a grant for the hall…' : 'A session after the November meeting…' }) + field('f-when', 'For when (optional)', 'date', '') + field('f-note', 'The ask, in your own words', 'textarea', '', { placeholder: 'Who you are, where, how many people, what you can offer. Plain and short.' }) + '</div><div class="btnrow"><button class="btn secondary" data-act="org" data-id="' + o.id + '">Back</button><button class="btn moss" data-act="outreach-save" data-id="' + o.id + '">Send through Áit</button></div><div class="small faint">In the real app this goes to them with the town’s page attached, and their reply comes back here. In this prototype it is logged on this phone only.</div>');
+}
+function outreachList() {
+  const list = S.outreach.slice().sort((a, b) => a.at < b.at ? 1 : -1);
+  sheet('<h2>Who we have asked</h2><div class="small muted">Every ask the committee has sent, and where it stands. Tap one to move it on.</div>' + (list.length ? '<div class="card pad-0"><div class="list">' + list.map(x => { const o = orgs().find(y => y.id === x.orgId) || { name: x.orgId }; return '<button class="item tap" data-act="outreach-status" data-id="' + x.id + '"><div class="col grow"><div class="t">' + esc(o.name) + '</div><div class="s">' + esc(x.what) + ' · ' + esc(first(x.by)) + ', ' + fmt(x.at) + (x.when ? ' · for ' + fmt(x.when) : '') + '</div></div><span class="pill ' + outreachCls(x.status) + '">' + outreachLabel(x.status) + '</span></button>'; }).join('') + '</div></div>' : empty('Nobody asked yet.')) + '<div class="btnrow"><button class="btn secondary" data-act="orgs">Find someone to ask</button></div>');
+}
+function outreachStatus(id) {
+  const x = S.outreach.find(y => y.id === id); const o = orgs().find(y => y.id === x.orgId) || { name: x.orgId };
+  sheet('<div class="eyebrow">' + esc(o.name) + '</div><h2>' + esc(x.what) + '</h2>' + (x.note ? '<div class="note">' + esc(x.note) + '</div>' : '') + '<div class="small muted">Asked by ' + esc(first(x.by)) + ' on ' + fmtLong(x.at) + '.</div><div class="radios">' + ['sent', 'replied', 'booked', 'done', 'no'].map(st => '<button class="radio ' + (x.status === st ? 'on' : '') + '" data-act="outreach-set" data-id="' + x.id + '" data-st="' + st + '"><span class="mark"></span><span><b>' + outreachLabel(st) + '</b></span></button>').join('') + '</div><div class="btnrow"><button class="btn secondary" data-act="outreach-list">Back</button><button class="btn danger" data-act="outreach-remove" data-id="' + x.id + '">Remove</button></div>');
+}
+
 // ---------- ACTIONS ----------
 function act(a, d, el) {
   const m = me();
@@ -1064,6 +1124,18 @@ function act(a, d, el) {
     case 'pick-issue': R.issueId = d.id; R.spread = 0; closeSheet(); render(); { const rd = $('#reader'); if (rd) rd.scrollTop = 0; } break;
     case 'spread': R.spread = Math.max(0, (R.spread || 0) + Number(d.k)); rerender(); break;
     case 'colours': coloursSheet(); break;
+    case 'orgs': { const st = orgState(); if (d.kind) st.kind = d.kind; orgsSheet(); break; }
+    case 'orgs-kind': { const st = orgState(); st.kind = d.kind; st.cat = ''; orgsSheet(); break; }
+    case 'orgs-cost': { const st = orgState(); st.cost = st.cost === d.cost ? '' : d.cost; orgsSheet(); break; }
+    case 'orgs-near': { const st = orgState(); st.near = !st.near; orgsSheet(); break; }
+    case 'orgs-clear': { const st = orgState(); st.q = ''; st.cat = ''; st.cost = ''; st.near = false; orgsSheet(); break; }
+    case 'org': orgSheet(d.id); break;
+    case 'outreach-form': outreachForm(d.id); break;
+    case 'outreach-save': { const what = need('f-what', 'Say what you need'); if (!what) return; S.outreach.push({ id: uid('o'), orgId: d.id, by: m.id, at: TODAY, what, when: val('f-when') || '', note: val('f-note'), status: 'sent' }); save(); orgSheet(d.id); rerender(); toast('Logged. In the real app this is on its way to them.'); break; }
+    case 'outreach-list': outreachList(); break;
+    case 'outreach-status': outreachStatus(d.id); break;
+    case 'outreach-set': { const x = S.outreach.find(y => y.id === d.id); x.status = d.st; save(); outreachStatus(x.id); rerender(); break; }
+    case 'outreach-remove': S.outreach = S.outreach.filter(y => y.id !== d.id); save(); outreachList(); rerender(); break;
     case 'theme-form': themeForm(); break;
     case 'theme-save': { const n = need('f-name', 'Give the pair a name'); if (!n) return; const a = val('f-accent'), b = val('f-second'); if (tooLight(a)) { $('#f-accent-err').textContent = 'Too light for white writing. Pick a darker main colour.'; return; } const t = { id: uid('th'), name: n, accent: a, second: b }; S.town.themes.push(t); S.town.themeId = t.id; S.town.themeBy = m.id; S.town.themeAt = TODAY; save(); render(); coloursSheet(); toast('The town is in ' + n + ' now'); break; }
     case 'theme-use': S.town.themeId = d.id; S.town.themeBy = m.id; S.town.themeAt = TODAY; save(); render(); coloursSheet(); break;
@@ -1187,8 +1259,9 @@ document.addEventListener('click', e => {
   e.preventDefault(); act(el.dataset.act, el.dataset, el);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
-document.addEventListener('input', e => { if (e.target && e.target.dataset.live === 'people') peopleSheet(e.target.value); });
+document.addEventListener('input', e => { if (e.target && e.target.dataset.live === 'people') peopleSheet(e.target.value); if (e.target && e.target.dataset.live === 'orgs') { orgState().q = e.target.value; R.orgsFocus = true; orgsSheet(); } });
 document.addEventListener('change', e => {
+  if (e.target && e.target.dataset.change === 'orgs-cat') { orgState().cat = e.target.value; orgsSheet(); return; }
   if (e.target && e.target.id === 'f-poster-image' && e.target.files && e.target.files.length) { shrinkImage(e.target.files[0], url => { R.posterImage = url; const pv = $('#f-poster-preview'); if (pv) pv.innerHTML = '<div class="poster" style="padding:0"><div class="pic" style="margin:0;border:0"><img src="' + url + '" alt=""></div></div><button class="linkish" data-act="poster-image-clear">Take it out</button>'; }); return; }
   if (e.target && e.target.id === 'f-image' && e.target.files && e.target.files.length) { readCaptions(); Array.from(e.target.files).forEach(f => shrinkImage(f, url => { R.pendingImages.push({ src: url, caption: '' }); const pv = $('#f-image-preview'); if (pv) pv.innerHTML = imagePreviews(); })); }
 });
